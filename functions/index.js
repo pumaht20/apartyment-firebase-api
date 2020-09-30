@@ -13,19 +13,4 @@ app.use(bodyParser.json());
 
 routes(app);
 
-app.post("/api/post", (req, res) => {
-  (async () => {
-    try {
-      await db
-        .collection("items")
-        .doc("/" + req.body.id + "/")
-        .create({ item: req.body.item });
-      return res.status(200).send();
-    } catch (error) {
-      console.log(error);
-      return res.status(500).send(error);
-    }
-  })();
-});
-
 exports.app = functions.https.onRequest(app);
