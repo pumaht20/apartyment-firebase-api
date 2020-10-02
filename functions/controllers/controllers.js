@@ -64,34 +64,11 @@ exports.login_user = async function (req, res) {
             phonenumber: doc.data().phonenumber,
           };
         });
-        return res.status(200).send(userData);
+        res.status(200).json({ success: true, message: userData });
       } else {
         res.status(500).json({ success: false, message: "Wrong password." });
       }
     });
-  } catch (error) {
-    res.status(500).send(error);
-  }
-};
-
-exports.get_example = async function (req, res) {
-  try {
-    const query = db.collection("user");
-    let response = [];
-    await query.get().then((querySnapshot) => {
-      let docs = querySnapshot.docs;
-      for (let doc of docs) {
-        const selectedItem = {
-          id: doc.id,
-          email: doc.data().email,
-          name: doc.data().name,
-          password: doc.data().password,
-          phonenumber: doc.data().phonenumber,
-        };
-        response.push(selectedItem);
-      }
-    });
-    return res.status(200).send(response);
   } catch (error) {
     res.status(500).send(error);
   }
