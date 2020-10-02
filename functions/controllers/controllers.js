@@ -1,4 +1,7 @@
+const bcrypt = require("bcrypt");
 const admin = require("firebase-admin");
+
+const API_SALT_ROUNDS = 12;
 
 var serviceAccount = require("../apartyment-d511d-firebase-adminsdk-b1xm4-73e78aec59.json");
 admin.initializeApp({
@@ -11,17 +14,85 @@ exports.root = function (req, res) {
   return res.status(200).send("Hello World!");
 };
 
-exports.post_example = function (req, res) {
-  (async () => {
+exports.register_user = async function (req, res) {
+  const { email, name, password, phonenumber } = req.body;
+
+  bcrypt.hash(password, API_SALT_ROUNDS, async function (err, hash) {
     try {
-      await db
-        .collection("items")
-        .doc("/" + req.body.id + "/")
-        .create({ item: req.body.item });
-      return res.status(200).send();
+      const user = {
+        email,
+        name,
+        hash,
+        phonenumber,
+      };
+      const doc = await db.collection("user").add(user);
+      res.status(201).send(`Created a new user: ${doc.id}`);
     } catch (error) {
-      console.log(error);
-      return res.status(500).send(error);
+      console.log("ERROR: ", error);
+      res.status(400).send("Could not create user, please check information.");
     }
-  })();
+  });
+};
+
+exports.login_user = async function (req, res) {
+  const { email, password } = req.body;
+  let hashComparison = [{ password: "" }];
+  let userData = {};
+  try {
+    const userCol = db.collection("user");
+    const query = await userCol.where("email", "==", email).get();
+
+    if (query.empty) {
+      console.log("No matching documents(user) for this email.");
+      return;
+    }
+
+    query.forEach((doc) => {
+      //console.log(doc.id, "=>", doc.data());
+      hashComparison = doc.data().hash;
+    });
+    console.log("hashComparison: ", hashComparison);
+    bcrypt.compare(password, hashComparison, function (err, result) {
+      //console.log("PASS: ", password, " HASHCOMP: ", hashComparison);
+      //console.log("TRUE?: ", result);
+
+      if (result) {
+        query.forEach((doc) => {
+          userData = {
+            email: doc.data().email,
+            name: doc.data().name,
+            phonenumber: doc.data().phonenumber,
+          };
+        });
+        return res.status(200).send(userData);
+      } else {
+        res.status(500).json({ success: false, message: "Wrong password." });
+      }
+    });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+};
+
+exports.get_example = async function (req, res) {
+  try {
+    const query = db.collection("user");
+    let response = [];
+    await query.get().then((querySnapshot) => {
+      let docs = querySnapshot.docs;
+      for (let doc of docs) {
+        const selectedItem = {
+          id: doc.id,
+          email: doc.data().email,
+          name: doc.data().name,
+          password: doc.data().password,
+          phonenumber: doc.data().phonenumber,
+        };
+        response.push(selectedItem);
+      }
+    });
+    return res.status(200).send(response);
+  } catch (error) {
+    res.status(500).send(error);
+  }
 };
