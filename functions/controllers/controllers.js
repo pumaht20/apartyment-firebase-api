@@ -123,7 +123,7 @@ exports.join_event = async function (req, res) {
     user_phonenumber,
     event_code,
   } = req.body;
-  console.log(event_code);
+  console.log("Event code: ", event_code);
   try {
     const eventCollection = db.collection("event").doc(event_code);
 
@@ -144,9 +144,64 @@ exports.join_event = async function (req, res) {
           .status(401)
           .json({ success: false, message: "No event with that code exists." });
       }
-      console.log("Exists? ", doc.exists);
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.create_group = async function (req, res) {
+  const {
+    user_id,
+    user_name,
+    user_phonenumber,
+    user_email,
+    group_name,
+    group_address,
+  } = req.body;
+
+  try {
+    const user = { user_id, user_name, user_email, user_phonenumber };
+    const group = { group_name, group_address };
+
+    (await db.collection("group").add(group)).collection("members").add(user);
+
+    res.status(200).json({
+      success: true,
+      message: `Group added to collection: ${group.group_name}`,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error." });
+  }
+};
+
+exports.join_group = async function (req, res) {
+  const {
+    user_id,
+    user_name,
+    user_phonenumber,
+    user_email,
+    group_id,
+  } = req.body;
+
+  try {
+    const groupCollection = db.collection("group").doc(group_id);
+
+    groupCollection.get().then((doc) => {
+      if (doc.exists) {
+        const user = { user_id, user_name, user_email, user_phonenumber };
+        db.collection("group").doc(group_id).collection("members").add(user);
+        res.status(200).json({
+          success: true,
+          message: `User ${user.user_id} added to group ${doc.id}`,
+        });
+      } else {
+        res
+          .status(500)
+          .json({ success: false, message: "This group does not exist." });
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
