@@ -91,8 +91,8 @@ exports.create_event = async function (req, res) {
 
   var time_diff =
     new Date(end_time).getHours() - new Date(start_time).getHours();
-  console.log("DIFF: ", time_diff);
-  const event_code = generateEventCode(5);
+  const event_code = helpers.generate_event_code(5);
+  console.log("event_code: ", event_code);
   try {
     const event = {
       title,
@@ -114,21 +114,6 @@ exports.create_event = async function (req, res) {
     res.status(500).send(error);
   }
 };
-
-function splitDate(datetime) {
-  var date = datetime.split("T")[0];
-  return date;
-}
-
-function generateEventCode(length) {
-  var result = "";
-  var characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  var charactersLength = characters.length;
-  for (var i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
-}
 
 exports.join_event = async function (req, res) {
   const {
