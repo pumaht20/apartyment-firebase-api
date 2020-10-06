@@ -74,21 +74,31 @@ exports.login_user = async function (req, res) {
 exports.create_event = async function (req, res) {
   const {
     title,
-    date,
-    time,
+    start_time,
+    end_time,
     description,
     creator_id,
     creator_name,
     creator_phone,
     creator_email,
   } = req.body;
+  var start_time_date = new Date(start_time).toLocaleString("en-GB", {
+    timeZone: "UTC",
+  });
+  var end_time_date = new Date(end_time).toLocaleString("en-GB", {
+    timeZone: "UTC",
+  });
 
+  var time_diff =
+    new Date(end_time).getHours() - new Date(start_time).getHours();
+  console.log("DIFF: ", time_diff);
   const event_code = generateEventCode(5);
   try {
     const event = {
       title,
-      date,
-      time,
+      start_time_date,
+      end_time_date,
+      time_diff,
       description,
       creator_id,
       creator_name,
@@ -104,6 +114,11 @@ exports.create_event = async function (req, res) {
     res.status(500).send(error);
   }
 };
+
+function splitDate(datetime) {
+  var date = datetime.split("T")[0];
+  return date;
+}
 
 function generateEventCode(length) {
   var result = "";
@@ -158,13 +173,18 @@ exports.create_group = async function (req, res) {
     user_email,
     group_name,
     group_address,
+    event_code,
   } = req.body;
 
   try {
     const user = { user_id, user_name, user_email, user_phonenumber };
     const group = { group_name, group_address };
+    const station = { group_name, group_address, user_name, user_phonenumber };
 
     (await db.collection("group").add(group)).collection("members").add(user);
+
+    //TODO: Validate that this exists first.
+    db.collection("event").doc(event_code).collection("stations").add(station);
 
     res.status(200).json({
       success: true,
