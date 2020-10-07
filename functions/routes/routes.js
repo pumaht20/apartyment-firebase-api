@@ -15,4 +15,6 @@ module.exports = function (app) {
   app.route("/create_group").post(controllers.create_group);
   //Join group
   app.route("/join_group").post(controllers.join_group);
+
+  app.route("/generate_schedule").post(controllers.generate_schedule);
 };

@@ -92,7 +92,6 @@ exports.create_event = async function (req, res) {
   var time_diff =
     new Date(end_time).getHours() - new Date(start_time).getHours();
   const event_code = helpers.generate_event_code(5);
-  console.log("event_code: ", event_code);
   try {
     const event = {
       title,
@@ -170,6 +169,7 @@ exports.create_group = async function (req, res) {
 
     //TODO: Validate that this exists first.
     db.collection("event").doc(event_code).collection("stations").add(station);
+    db.collection("event").doc(event_code).collection("groups").add(group);
 
     res.status(200).json({
       success: true,
@@ -210,3 +210,103 @@ exports.join_group = async function (req, res) {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
+
+exports.generate_schedule = async function (req, res) {
+  const { event_code } = req.body;
+  var group_array = [];
+  try {
+    db.collection("event")
+      .doc(event_code)
+      .collection("groups")
+      .get()
+      .then(function (doc) {
+        doc.docs.map((doc) => {
+          group_array.push(doc.data().group_name);
+        });
+
+        if (group_array.length % 3 === 0) {
+          //This is the amount of subdivisions, eg for 6 groups
+          //we get 3 groups of 2, 2,2,2, these are group pairings regarding hosting
+          //in the schedule, eg AB CD EF.
+          var subdivision_count = group_array.length / 2;
+
+          var subdivision_size = group_array.length / subdivision_count;
+
+          //console.log("Subdivisions: ", subdivision_count);
+          //console.log("Subdivision size: ", subdivision_size);
+          var temparray;
+
+          db.collection("event")
+            .doc(event_code)
+            .get()
+            .then(function (doc) {
+              //console.log("time_diff: ", doc.data().time_diff);
+              //console.log(
+              //"Total timespan in minutes: ",
+              //doc.data().time_diff * 60,
+              //"| Time per subdivision: ",
+              //(doc.data().time_diff * 60) / subdivision_count,
+              //" minutes."
+              //);
+
+              var subdivision_time =
+                (doc.data().time_diff * 60) / subdivision_count;
+              var ends = new Date(doc.data().start_time_date);
+              var begins = new Date(doc.data().start_time_date);
+              var counter = 0;
+              for (
+                i = 0, j = group_array.length;
+                i < j;
+                i += subdivision_size
+              ) {
+                //eg: [GROUP1, GROUP2], a timeslot.
+                temparray = group_array.slice(i, i + subdivision_size);
+
+                //Add time and subdivision to timeslot here.
+                ends = addMinutes(ends, subdivision_time);
+
+                var first_group = temparray[0];
+                var second_group = temparray[1];
+
+                if (counter !== 0) {
+                  begins = addMinutes(begins, subdivision_time);
+                }
+
+                var time_slot = {
+                  first_group,
+                  second_group,
+                  begins,
+                  ends,
+                };
+
+                counter += 1;
+
+                db.collection("event")
+                  .doc(event_code)
+                  .collection("schedule")
+                  .add(time_slot);
+              }
+            });
+        } else {
+          console.log(group_array.length / 2);
+        }
+      });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+function addMinutes(date, minutes) {
+  return new Date(date.getTime() + minutes * 60000);
+}
+
+function shuffle(a) {
+  var j, x, i;
+  for (i = a.length - 1; i > 0; i--) {
+    j = Math.floor(Math.random() * (i + 1));
+    x = a[i];
+    a[i] = a[j];
+    a[j] = x;
+  }
+  return a;
+}
