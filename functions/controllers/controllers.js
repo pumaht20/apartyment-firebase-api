@@ -211,6 +211,31 @@ exports.join_group = async function (req, res) {
   }
 };
 
+const arr = [
+  "Element1",
+  "Element2",
+  "Element3",
+  "Element4",
+  "Element5",
+  "Element6",
+];
+
+function customSlice(arr) {
+  for (let i = 0; i < arr.length; i += 2) {
+    const startIdx = i;
+    const endIdx = i + 2;
+
+    const chunk = arr.slice(startIdx, endIdx);
+    console.log("chunk -> ", chunk);
+
+    const rest1 = arr.slice(0, startIdx);
+    const rest2 = arr.slice(endIdx, arr.length);
+    const rest = rest1.concat(rest2);
+
+    console.log("rest -> ", rest);
+  }
+}
+
 exports.generate_schedule = async function (req, res) {
   const { event_code } = req.body;
   var group_array = [];
@@ -222,19 +247,22 @@ exports.generate_schedule = async function (req, res) {
       .then(function (doc) {
         doc.docs.map((doc) => {
           group_array.push(doc.data().group_name);
+          console.log("Group name: ", doc.data().group_name);
         });
-
         if (group_array.length % 3 === 0) {
           //This is the amount of subdivisions, eg for 6 groups
           //we get 3 groups of 2, 2,2,2, these are group pairings regarding hosting
           //in the schedule, eg AB CD EF.
-          var subdivision_count = group_array.length / 2;
+          var subdivision_count = group_array.length / 3;
 
-          var subdivision_size = group_array.length / subdivision_count;
+          console.log("subdivision_count: ", subdivision_count);
 
-          //console.log("Subdivisions: ", subdivision_count);
-          //console.log("Subdivision size: ", subdivision_size);
+          var subdivision_size = 3;
+
+          console.log("subdivision_size: ", subdivision_size);
+
           var temparray;
+          var temparray2;
 
           db.collection("event")
             .doc(event_code)
@@ -245,41 +273,52 @@ exports.generate_schedule = async function (req, res) {
               var ends = new Date(doc.data().start_time_date);
               var begins = new Date(doc.data().start_time_date);
               var counter = 0;
-              for (
-                i = 0, j = group_array.length;
-                i < j;
-                i += subdivision_size
-              ) {
-                //eg: [GROUP1, GROUP2], a timeslot.
+              for (var i = 0; i < group_array.length; i += subdivision_size) {
                 temparray = group_array.slice(i, i + subdivision_size);
+                var rest1 = group_array.slice(0, i);
+                var rest2 = group_array.slice(
+                  i + subdivision_size,
+                  group_array.length
+                );
+                var rest = rest1.concat(rest2);
+
+                var groups = [];
+                for (var j = 0; j < rest.length; j += 2) {
+                  temparray2 = rest.slice(j, j + 2);
+                  groups.push(temparray2);
+                }
 
                 //Add time and subdivision to timeslot here.
                 ends = addMinutes(ends, subdivision_time);
 
-                var first_group = temparray[0];
-                var second_group = temparray[1];
-
                 if (counter !== 0) {
                   begins = addMinutes(begins, subdivision_time);
                 }
-                var time_slot = {
-                  first_group,
-                  second_group,
-                  begins: begins.toLocaleString("en-GB", {
-                    timeZone: "UTC",
-                  }),
+                groups_counter = 0;
+                for (var k = 0; k < temparray.length; k++) {
+                  var host_group = temparray[k];
+                  var attending_groups = groups[groups_counter];
+                  var time_slot = {
+                    host_group,
+                    groups: attending_groups,
+                    begins: begins.toLocaleString("en-GB", {
+                      timeZone: "UTC",
+                    }),
 
-                  ends: ends.toLocaleString("en-GB", {
-                    timeZone: "UTC",
-                  }),
-                };
+                    ends: ends.toLocaleString("en-GB", {
+                      timeZone: "UTC",
+                    }),
+                  };
+                  groups_counter += 1;
+                  console.log("time_slot: ", time_slot);
+                  //db.collection("event")
+                  //.doc(event_code)
+                  //.collection("schedule")
+                  //.add(time_slot);
 
+                  //res.status(201).json({ success: true, message: time_slot });
+                }
                 counter += 1;
-
-                db.collection("event")
-                  .doc(event_code)
-                  .collection("schedule")
-                  .add(time_slot);
               }
             });
         } else {
@@ -290,6 +329,14 @@ exports.generate_schedule = async function (req, res) {
     console.log(error);
   }
 };
+
+function shuffle(a) {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60000);
