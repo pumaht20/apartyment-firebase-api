@@ -244,6 +244,7 @@ exports.generate_schedule = async function (req, res) {
 							var ends = new Date(doc.data().start_time_date);
 							var begins = new Date(doc.data().start_time_date);
 							var counter = 0;
+							var groups_object = [];
 							for (var i = 0; i < group_array.length; i += subdivision_size) {
 								temparray = group_array.slice(i, i + subdivision_size);
 								var rest1 = group_array.slice(0, i);
@@ -259,10 +260,10 @@ exports.generate_schedule = async function (req, res) {
 									groups.push(temparray2);
 								}
 
-								ends = addMinutes(ends, subdivision_time);
+								ends = helpers.add_minutes(ends, subdivision_time);
 
 								if (counter !== 0) {
-									begins = addMinutes(begins, subdivision_time);
+									begins = helpers.add_minutes(begins, subdivision_time);
 								}
 								groups_counter = 0;
 								for (var k = 0; k < temparray.length; k++) {
@@ -279,17 +280,17 @@ exports.generate_schedule = async function (req, res) {
 											timeZone: "UTC",
 										}),
 									};
+									groups_object.push(time_slot);
 									groups_counter += 1;
 									console.log("time_slot: ", time_slot);
 									db.collection("event")
 										.doc(event_code)
 										.collection("schedule")
 										.add(time_slot);
-
-									//res.status(201).json({ success: true, message: time_slot });
 								}
 								counter += 1;
 							}
+							res.status(201).json({ success: true, message: groups_object });
 						});
 				} else {
 					console.log(group_array.length / 2);
@@ -299,15 +300,3 @@ exports.generate_schedule = async function (req, res) {
 		console.log(error);
 	}
 };
-
-function shuffle(a) {
-	for (let i = a.length - 1; i > 0; i--) {
-		const j = Math.floor(Math.random() * (i + 1));
-		[a[i], a[j]] = [a[j], a[i]];
-	}
-	return a;
-}
-
-function addMinutes(date, minutes) {
-	return new Date(date.getTime() + minutes * 60000);
-}
