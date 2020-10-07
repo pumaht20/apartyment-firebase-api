@@ -240,15 +240,6 @@ exports.generate_schedule = async function (req, res) {
             .doc(event_code)
             .get()
             .then(function (doc) {
-              //console.log("time_diff: ", doc.data().time_diff);
-              //console.log(
-              //"Total timespan in minutes: ",
-              //doc.data().time_diff * 60,
-              //"| Time per subdivision: ",
-              //(doc.data().time_diff * 60) / subdivision_count,
-              //" minutes."
-              //);
-
               var subdivision_time =
                 (doc.data().time_diff * 60) / subdivision_count;
               var ends = new Date(doc.data().start_time_date);
@@ -271,12 +262,16 @@ exports.generate_schedule = async function (req, res) {
                 if (counter !== 0) {
                   begins = addMinutes(begins, subdivision_time);
                 }
-
                 var time_slot = {
                   first_group,
                   second_group,
-                  begins,
-                  ends,
+                  begins: begins.toLocaleString("en-GB", {
+                    timeZone: "UTC",
+                  }),
+
+                  ends: ends.toLocaleString("en-GB", {
+                    timeZone: "UTC",
+                  }),
                 };
 
                 counter += 1;
@@ -298,15 +293,4 @@ exports.generate_schedule = async function (req, res) {
 
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60000);
-}
-
-function shuffle(a) {
-  var j, x, i;
-  for (i = a.length - 1; i > 0; i--) {
-    j = Math.floor(Math.random() * (i + 1));
-    x = a[i];
-    a[i] = a[j];
-    a[j] = x;
-  }
-  return a;
 }
