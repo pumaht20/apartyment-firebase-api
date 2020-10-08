@@ -379,3 +379,35 @@ exports.get_event_stations = async function (req, res) {
     res.status(500).json({ success: false, message: error });
   }
 };
+
+exports.get_users = async function (req, res) {
+  const user_array = [];
+  try {
+    db.collection("user")
+      .get()
+      .then(function (doc) {
+        doc.docs.map((doc) => {
+          user_array.push(doc.data());
+        });
+        res.status(200).json({ success: true, message: user_array });
+      });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error });
+  }
+};
+
+exports.get_groups = async function (req, res) {
+  const group_array = [];
+  try {
+    db.collection("group")
+      .get()
+      .then(function (doc) {
+        doc.docs.map((doc) => {
+          group_array.push(doc.data());
+        });
+        res.status(200).json({ success: true, message: group_array });
+      });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error });
+  }
+};

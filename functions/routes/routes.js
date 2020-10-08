@@ -25,4 +25,6 @@ module.exports = function (app) {
   app.route("/get_event_groups").get(controllers.get_event_groups);
   app.route("/get_event_schedule").get(controllers.get_event_schedule);
   app.route("/get_event_stations").get(controllers.get_event_stations);
+  app.route("/get_users").get(controllers.get_users);
+  app.route("/get_groups").get(controllers.get_groups);
 };
