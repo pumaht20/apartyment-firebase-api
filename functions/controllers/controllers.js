@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const admin = require("firebase-admin");
 const helpers = require("./helpers/helpers");
+const validators = require("./helpers/validators");
 const API_SALT_ROUNDS = 12;
 
 var serviceAccount = require("../apartyment-d511d-firebase-adminsdk-b1xm4-73e78aec59.json");
