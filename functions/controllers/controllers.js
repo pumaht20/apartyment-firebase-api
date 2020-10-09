@@ -51,7 +51,7 @@ exports.login_user = async function (req, res) {
     if (query.empty) {
       console.log("no matching documents(user) for this email.");
       return res
-        .status(401)
+        .status(404)
         .json({ success: false, message: "email not found in database." });
     }
 
@@ -72,7 +72,7 @@ exports.login_user = async function (req, res) {
           });
           res.status(200).json({ success: true, message: userData });
         } else {
-          res.status(500).json({ success: false, message: "Wrong password." });
+          res.status(401).json({ success: false, message: "Wrong password." });
         }
       }
     });
