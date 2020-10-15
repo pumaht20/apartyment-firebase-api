@@ -18,26 +18,36 @@ exports.root = function (req, res) {
 exports.register_user = async function (req, res) {
   const { email, name, password, phonenumber } = req.body;
 
-  bcrypt.hash(password, API_SALT_ROUNDS, async (err, hash) => {
-    if (err) {
-      console.log(err.stack);
+  try {
+    const query = await db.collection("user").where("email", "==", email).get();
+
+    if (query.empty) {
+      let user_added = "";
+      bcrypt.hash(password, API_SALT_ROUNDS, async (err, hash) => {
+        if (err) {
+          console.log(err.stack);
+        } else {
+          const user = {
+            email,
+            name,
+            hash,
+            phonenumber,
+          };
+          user_added = await db.collection("user").add(user);
+        }
+      });
+      return res.status(201).json({
+        success: true,
+        message: `Created a new user: ${user_added}`,
+      });
     } else {
-      try {
-        const user = {
-          email,
-          name,
-          hash,
-          phonenumber,
-        };
-        const doc = await db.collection("user").add(user);
-        return res
-          .status(201)
-          .json({ success: true, message: `Created a new user: ${doc.id}` });
-      } catch (error) {
-        return res.status(400).json({ success: false, message: error });
-      }
+      return res
+        .status(409)
+        .json({ success: false, message: "This email is already registered." });
     }
-  });
+  } catch (error) {
+    return res.status(500).send(error);
+  }
 };
 
 exports.login_user = async function (req, res) {

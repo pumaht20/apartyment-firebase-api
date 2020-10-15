@@ -120,7 +120,7 @@ module.exports = function (app) {
 
   /** Route: /join_group
    *
-   * Adds entry to "group" collection
+   * Adds entry to "group" collection.
    *
    */
   app.route("/join_group").post(controllers.join_group);
@@ -132,6 +132,8 @@ module.exports = function (app) {
   app.route("/generate_schedule").post(controllers.generate_schedule);
 
   /** Route: /join_group_in_event
+   *
+   * Adds entry to "members" collection in "group" document in "event" document.
    *
    *
    */
