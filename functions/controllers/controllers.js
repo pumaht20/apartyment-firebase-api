@@ -1,9 +1,7 @@
 const bcrypt = require("bcrypt");
 const admin = require("firebase-admin");
 const helpers = require("./helpers/helpers");
-const validators = require("./helpers/validators");
 const API_SALT_ROUNDS = 12;
-
 var serviceAccount = require("../apartyment-d511d-firebase-adminsdk-b1xm4-73e78aec59.json");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -430,6 +428,38 @@ exports.get_event_schedule = async function (req, res) {
       .catch((error) => {
         console.error(error);
         res.error(500);
+      });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error });
+  }
+};
+
+exports.get_group_schedule = async function (req, res) {
+  const { event_code, group_name } = req.body;
+  const groupScheduleArray = [];
+  try {
+    db.collection("event")
+      .doc(event_code)
+      .collection("schedule")
+      .get()
+      .then(function (doc) {
+        doc.docs.map((doc) => {
+          if (doc.data().host_group === group_name) {
+            groupScheduleArray.push(doc.data());
+          } else {
+            doc.data().groups.map((group) => {
+              if (group === group_name) {
+                groupScheduleArray.push(doc.data());
+              }
+            });
+          }
+        });
+        groupScheduleArray.map((time_slot) => {
+          console.log("TIMESLOT: ", time_slot);
+        });
+        return res
+          .status(200)
+          .json({ success: true, message: groupScheduleArray });
       });
   } catch (error) {
     res.status(500).json({ success: false, message: error });
