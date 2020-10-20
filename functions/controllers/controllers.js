@@ -435,7 +435,7 @@ exports.get_event_schedule = async function (req, res) {
 };
 
 exports.get_group_schedule = async function (req, res) {
-  const { event_code, group_name } = req.body;
+  const { event_code, group_name } = req.query;
   const groupScheduleArray = [];
   try {
     db.collection("event")
@@ -454,12 +454,13 @@ exports.get_group_schedule = async function (req, res) {
             });
           }
         });
-        groupScheduleArray.map((time_slot) => {
-          console.log("TIMESLOT: ", time_slot);
-        });
         return res
           .status(200)
           .json({ success: true, message: groupScheduleArray });
+      })
+      .catch((error) => {
+        console.error(error);
+        res.error(500);
       });
   } catch (error) {
     res.status(500).json({ success: false, message: error });
