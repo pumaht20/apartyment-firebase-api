@@ -1,9 +1,7 @@
 const bcrypt = require("bcrypt");
 const admin = require("firebase-admin");
 const helpers = require("./helpers/helpers");
-const validators = require("./helpers/validators");
 const API_SALT_ROUNDS = 12;
-
 var serviceAccount = require("../apartyment-d511d-firebase-adminsdk-b1xm4-73e78aec59.json");
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -18,26 +16,36 @@ exports.root = function (req, res) {
 exports.register_user = async function (req, res) {
   const { email, name, password, phonenumber } = req.body;
 
-  bcrypt.hash(password, API_SALT_ROUNDS, async (err, hash) => {
-    if (err) {
-      console.log(err.stack);
+  try {
+    const query = await db.collection("user").where("email", "==", email).get();
+
+    if (query.empty) {
+      let user_added = "";
+      bcrypt.hash(password, API_SALT_ROUNDS, async (err, hash) => {
+        if (err) {
+          console.log(err.stack);
+        } else {
+          const user = {
+            email,
+            name,
+            hash,
+            phonenumber,
+          };
+          user_added = await db.collection("user").add(user);
+        }
+      });
+      return res.status(201).json({
+        success: true,
+        message: `Created a new user: ${user_added}`,
+      });
     } else {
-      try {
-        const user = {
-          email,
-          name,
-          hash,
-          phonenumber,
-        };
-        const doc = await db.collection("user").add(user);
-        return res
-          .status(201)
-          .json({ success: true, message: `Created a new user: ${doc.id}` });
-      } catch (error) {
-        return res.status(400).json({ success: false, message: error });
-      }
+      return res
+        .status(409)
+        .json({ success: false, message: "This email is already registered." });
     }
-  });
+  } catch (error) {
+    return res.status(500).send(error);
+  }
 };
 
 exports.login_user = async function (req, res) {
@@ -102,7 +110,9 @@ exports.create_event = async function (req, res) {
 
   var time_diff =
     new Date(end_time).getHours() - new Date(start_time).getHours();
+
   const event_code = helpers.generate_event_code(5);
+
   try {
     const event = {
       title,
@@ -119,7 +129,7 @@ exports.create_event = async function (req, res) {
       .collection("event")
       .doc(event_code)
       .set(event);
-    res.status(201).send(`Created a new event: ${event_code}`);
+    return res.status(201).send(`Created a new event: ${event_code}`);
   } catch (error) {
     res.status(500).send(error);
   }
@@ -229,107 +239,130 @@ exports.join_group = async function (req, res) {
   }
 };
 
+exports.join_group_in_event = async function (req, res) {
+  const {
+    user_id,
+    user_name,
+    user_phonenumber,
+    user_email,
+    event_code,
+    group_id,
+  } = req.body;
+
+  try {
+    const user = { user_id, user_name, user_email, user_phonenumber };
+    db.collection("event")
+      .doc(event_code)
+      .collection("groups")
+      .doc(group_id)
+      .collection("members")
+      .add(user);
+    return res.status(200).json({
+      success: true,
+      message: `User ${user.user_id} added to members in group ${group_id}`,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 exports.generate_schedule = async function (req, res) {
   const { event_code } = req.body;
   var group_array = [];
-
+  console.log(event_code);
   try {
     db.collection("event")
       .doc(event_code)
       .collection("groups")
       .get()
       .then(function (doc) {
-        //    if (doc.exists) {
+        console.log("DOC: ", doc);
+        //if (doc.exists) {
         doc.docs.map((doc) => {
           group_array.push(doc.data().group_name);
         });
-        //   if (group_array.length % 3 === 0) {
-        var subdivision_count = Math.ceil(group_array.length / 3);
-        var subdivision_size = Math.ceil(group_array.length / 3);
-        var temparray;
-        var temparray2;
+        if (group_array.length % 3 === 0) {
+          var subdivision_count = group_array.length / 3;
+          var subdivision_size = group_array.length / 3;
+          var temparray;
+          var temparray2;
 
-        db.collection("event")
-          .doc(event_code)
-          .get()
-          .then(function (doc) {
-            var subdivision_time =
-              (doc.data().time_diff * 60) / subdivision_count;
+          db.collection("event")
+            .doc(event_code)
+            .get()
+            .then(function (doc) {
+              var subdivision_time =
+                (doc.data().time_diff * 60) / subdivision_count;
 
-            var ends = new Date(doc.data().start_time_date);
-            var begins = new Date(doc.data().start_time_date);
-            var counter = 0;
-            var groups_object = [];
-            for (var i = 0; i < group_array.length; i += subdivision_size) {
-              temparray = group_array.slice(i, i + subdivision_size);
-              var rest1 = group_array.slice(0, i);
-              var rest2 = group_array.slice(
-                i + subdivision_size,
-                group_array.length
-              );
-              var rest = rest1.concat(rest2);
-              console.log("REST: ", rest);
+              var ends = new Date(doc.data().start_time_date);
+              var begins = new Date(doc.data().start_time_date);
+              var counter = 0;
+              var groups_object = [];
+              for (var i = 0; i < group_array.length; i += subdivision_size) {
+                temparray = group_array.slice(i, i + subdivision_size);
+                var rest1 = group_array.slice(0, i);
+                var rest2 = group_array.slice(
+                  i + subdivision_size,
+                  group_array.length
+                );
+                var rest = rest1.concat(rest2);
 
-              var groups = [];
-              for (var j = 0; j < rest.length; j += 2) {
-                temparray2 = rest.slice(j, j + 2);
-                groups.push(temparray2);
+                var groups = [];
+                for (var j = 0; j < rest.length; j += 2) {
+                  temparray2 = rest.slice(j, j + 2);
+                  groups.push(temparray2);
+                }
+
+                ends = helpers.add_minutes(ends, subdivision_time);
+
+                if (counter !== 0) {
+                  begins = helpers.add_minutes(begins, subdivision_time);
+                }
+                groups_counter = 0;
+                for (var k = 0; k < temparray.length; k++) {
+                  var host_group = temparray[k];
+                  var attending_groups = groups[groups_counter];
+                  var time_slot = {
+                    host_group,
+                    groups: attending_groups,
+                    begins: begins.toLocaleString("en-GB", {
+                      timeZone: "UTC",
+                    }),
+
+                    ends: ends.toLocaleString("en-GB", {
+                      timeZone: "UTC",
+                    }),
+                  };
+                  groups_object.push(time_slot);
+                  groups_counter += 1;
+                  db.collection("event")
+                    .doc(event_code)
+                    .collection("schedule")
+                    .add(time_slot);
+                }
+                counter += 1;
               }
-
-              ends = helpers.add_minutes(ends, subdivision_time);
-
-              if (counter !== 0) {
-                begins = helpers.add_minutes(begins, subdivision_time);
-              }
-              groups_counter = 0;
-              for (var k = 0; k < temparray.length; k++) {
-                var host_group = temparray[k];
-                var attending_groups = groups[groups_counter];
-                console.log("attending groups: ", attending_groups);
-                var time_slot = {
-                  host_group,
-                  groups: attending_groups,
-                  begins: begins.toLocaleString("en-GB", {
-                    timeZone: "UTC",
-                  }),
-
-                  ends: ends.toLocaleString("en-GB", {
-                    timeZone: "UTC",
-                  }),
-                };
-                groups_object.push(time_slot);
-                groups_counter += 1;
-                db.collection("event")
-                  .doc(event_code)
-                  .collection("schedule")
-                  .add(time_slot);
-              }
-              counter += 1;
-            }
-            return res
-              .status(201)
-              .json({ success: true, message: groups_object });
-          })
-          .catch((error) => {
-            console.error(error);
-            res.error(500);
-          });
-        return;
-        /*     } else {
+              return res
+                .status(201)
+                .json({ success: true, message: groups_object });
+            })
+            .catch((error) => {
+              console.error(error);
+              res.error(500);
+            });
+          return;
+        } else {
           // In this case, we can't divide the entire array of groups into
           // smaller groups of 3, eg 7 groups: ["G1", "G2", "G3", "G4", "G5", "G6", "G7"]
           console.log("Now we are in shit fuck territory: ", group_array);
           console.log("length/2: ", group_array.length / 2);
           console.log("length/2 floored: ", Math.floor(group_array.length / 2));
           return res.status(200).json({ success: true, message: "fuck" });
-        } */
-        /*     } else {
-          throw new Error("This event does not exist.");
-        } */
+        }
+        //}
       })
       .catch((error) => {
         console.error(error);
-        res.error(500);
       });
   } catch (error) {
     console.log(error);
@@ -392,6 +425,39 @@ exports.get_event_schedule = async function (req, res) {
         });
 
         return res.status(200).json({ success: true, message: schedule_array });
+      })
+      .catch((error) => {
+        console.error(error);
+        res.error(500);
+      });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error });
+  }
+};
+
+exports.get_group_schedule = async function (req, res) {
+  const { event_code, group_name } = req.query;
+  const groupScheduleArray = [];
+  try {
+    db.collection("event")
+      .doc(event_code)
+      .collection("schedule")
+      .get()
+      .then(function (doc) {
+        doc.docs.map((doc) => {
+          if (doc.data().host_group === group_name) {
+            groupScheduleArray.push(doc.data());
+          } else {
+            doc.data().groups.map((group) => {
+              if (group === group_name) {
+                groupScheduleArray.push(doc.data());
+              }
+            });
+          }
+        });
+        return res
+          .status(200)
+          .json({ success: true, message: groupScheduleArray });
       })
       .catch((error) => {
         console.error(error);
