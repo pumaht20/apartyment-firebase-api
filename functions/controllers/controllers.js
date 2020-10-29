@@ -387,6 +387,28 @@ exports.get_event_information = async function (req, res) {
   }
 };
 
+exports.get_group_information = async function (req, res) {
+  const { event_code, group_id } = req.query;
+  try {
+    db.collection("event")
+      .doc(event_code)
+      .collection("groups")
+      .doc(group_id)
+      .get()
+      .then(function (doc) {
+        return res
+          .status(200)
+          .json({ success: true, message: { ...doc.data(), ...doc.id } });
+      })
+      .catch((error) => {
+        console.error(error);
+        res.error(500);
+      });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error });
+  }
+};
+
 exports.get_event_groups = async function (req, res) {
   const { event_code } = req.body;
   var group_array = [];

@@ -147,6 +147,12 @@ module.exports = function (app) {
    */
   app.route("/get_event_information").get(controllers.get_event_information);
 
+  /** Route: /get_group_information
+   *
+   *
+   */
+  app.route("/get_group_information").get(controllers.get_group_information);
+
   /** Route: /get_event_groups
    *
    *
