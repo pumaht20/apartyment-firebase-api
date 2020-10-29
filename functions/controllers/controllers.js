@@ -396,9 +396,15 @@ exports.get_group_information = async function (req, res) {
       .doc(group_id)
       .get()
       .then(function (doc) {
-        return res
-          .status(200)
-          .json({ success: true, message: { ...doc.data(), ...doc.id } });
+        return res.status(200).json({
+          success: true,
+          message: {
+            group_id: doc.id,
+            group_name: doc.data().group_name,
+            group_address: doc.data().group_address,
+            group_members: doc.data().members,
+          },
+        });
       })
       .catch((error) => {
         console.error(error);
